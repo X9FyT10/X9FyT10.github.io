@@ -1,51 +1,315 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <title>网站</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>鼠标坐标追踪器</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
-      font-family: "Microsoft YaHei", sans-serif;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+      background: #0a0a1a;
+      cursor: none;
+    }
+
+    /* 背景网格 */
+    .grid {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    /* 顶部信息栏 */
+    .info-bar {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      padding: 20px;
+      z-index: 100;
+      flex-wrap: wrap;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      padding: 14px 22px;
       text-align: center;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      margin: 0;
-      padding: 50px;
-      min-height: 100vh;
+      min-width: 120px;
+      transition: transform 0.15s, box-shadow 0.15s;
     }
-    h1 {
-      font-size: 48px;
-      margin-bottom: 20px;
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
     }
-    p {
-      font-size: 20px;
-      opacity: 0.9;
+
+    .card .label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 6px;
     }
-    a {
-      color: #ffd700;
-      font-size: 18px;
+
+    .card .value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: "Consolas", "Monaco", monospace;
+      color: #fff;
     }
-    button {
-      background: white;
-      color: #764ba2;
-      border: none;
-      padding: 15px 30px;
-      font-size: 18px;
-      border-radius: 25px;
-      cursor: pointer;
-      margin-top: 20px;
+
+    .card.x .value { color: #ff6b6b; }
+    .card.y .value { color: #51cf66; }
+    .card.rgb .value { font-size: 18px; }
+
+    /* 十字准星 */
+    .crosshair-h, .crosshair-v {
+      position: fixed;
+      background: rgba(102, 126, 234, 0.4);
+      pointer-events: none;
+      z-index: 50;
     }
-    button:hover {
-      transform: scale(1.05);
+    .crosshair-h {
+      height: 1px; width: 100%;
+      top: 0; left: 0;
+    }
+    .crosshair-v {
+      width: 1px; height: 100%;
+      top: 0; left: 0;
+    }
+
+    /* 自定义光标 */
+    .cursor-dot {
+      position: fixed;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: #667eea;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 20px #667eea, 0 0 40px #667eea;
+      transition: width 0.1s, height 0.1s;
+    }
+
+    .cursor-ring {
+      position: fixed;
+      width: 36px; height: 36px;
+      border: 2px solid rgba(102, 126, 234, 0.6);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9998;
+      transform: translate(-50%, -50%);
+      transition: width 0.15s, height 0.15s, border-color 0.15s;
+    }
+
+    /* 点击波纹 */
+    .ripple {
+      position: fixed;
+      border-radius: 50%;
+      border: 3px solid rgba(255,255,255,0.6);
+      pointer-events: none;
+      animation: ripple-anim 0.6s ease-out forwards;
+      z-index: 9997;
+      transform: translate(-50%, -50%);
+    }
+
+    @keyframes ripple-anim {
+      0%   { width: 0; height: 0; opacity: 1; }
+      100% { width: 120px; height: 120px; opacity: 0; }
+    }
+
+    /* 左下角提示 */
+    .hint {
+      position: fixed;
+      bottom: 20px; left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.25);
+      font-size: 13px;
+      letter-spacing: 1px;
+      z-index: 100;
+    }
+
+    /* 右下角统计 */
+    .stats {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      display: flex;
+      gap: 14px;
+      z-index: 100;
+    }
+
+    .stat-chip {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .stat-chip span {
+      color: #fff;
+      font-weight: 600;
+      font-family: "Consolas", monospace;
     }
   </style>
 </head>
 <body>
-  <h1>网站</h1>
-  <p>Null</p>
-  <br>
-  <a href="https://github.com" target="_blank">去 GitHub 看看</a>
-  <br><br>
-  <button onclick="alert('NULL！')">点我试试</button>
+
+  <div class="grid"></div>
+
+  <div class="crosshair-h" id="chH"></div>
+  <div class="crosshair-v" id="chV"></div>
+
+  <div class="cursor-ring" id="cursorRing"></div>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <div class="info-bar">
+    <div class="card x">
+      <div class="label">X 坐标</div>
+      <div class="value" id="valX">0</div>
+    </div>
+    <div class="card y">
+      <div class="label">Y 坐标</div>
+      <div class="value" id="valY">0</div>
+    </div>
+    <div class="card">
+      <div class="label">百分比 X</div>
+      <div class="value" id="valPX">0%</div>
+    </div>
+    <div class="card">
+      <div class="label">百分比 Y</div>
+      <div class="value" id="valPY">0%</div>
+    </div>
+    <div class="card rgb">
+      <div class="label">角度 (°)</div>
+      <div class="value" id="valAngle">0</div>
+    </div>
+    <div class="card rgb">
+      <div class="label">距离 (px)</div>
+      <div class="value" id="valDist">0</div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-chip">移动次数：<span id="moveCount">0</span></div>
+    <div class="stat-chip">点击次数：<span id="clickCount">0</span></div>
+    <div class="stat-chip">速度：<span id="speedVal">0</span> px/s</div>
+  </div>
+
+  <div class="hint">移动鼠标查看坐标 · 点击产生涟漪效果</div>
+
+  <script>
+    const cursorDot   = document.getElementById('cursorDot');
+    const cursorRing  = document.getElementById('cursorRing');
+    const chH         = document.getElementById('chH');
+    const chV         = document.getElementById('chV');
+    const valX        = document.getElementById('valX');
+    const valY        = document.getElementById('valY');
+    const valPX       = document.getElementById('valPX');
+    const valPY       = document.getElementById('valPY');
+    const valAngle    = document.getElementById('valAngle');
+    const valDist     = document.getElementById('valDist');
+    const moveCount   = document.getElementById('moveCount');
+    const clickCount  = document.getElementById('clickCount');
+    const speedVal    = document.getElementById('speedVal');
+
+    let moves = 0, clicks = 0;
+    let lastX = 0, lastY = 0, lastTime = Date.now();
+    let speed = 0;
+
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    document.addEventListener('mousemove', (e) => {
+      const x = e.clientX;
+      const y = e.clientY;
+      const now = Date.now();
+      const dt = now - lastTime || 1;
+
+      // 光标跟随
+      cursorDot.style.left  = x + 'px';
+      cursorDot.style.top   = y + 'px';
+      cursorRing.style.left = x + 'px';
+      cursorRing.style.top  = y + 'px';
+
+      // 十字线
+      chH.style.top = y + 'px';
+      chV.style.left = x + 'px';
+
+      // 数值更新
+      valX.textContent  = x;
+      valY.textContent  = y;
+      valPX.textContent = Math.round(x / window.innerWidth  * 100) + '%';
+      valPY.textContent = Math.round(y / window.innerHeight * 100) + '%';
+
+      // 角度 & 距离（以屏幕中心为原点）
+      const dx = x - centerX;
+      const dy = y - centerY;
+      const angle = Math.round(Math.atan2(dy, dx) * 180 / Math.PI);
+      valAngle.textContent = angle + '°';
+      valDist.textContent  = Math.round(Math.sqrt(dx*dx + dy*dy));
+
+      // 速度
+      const dist = Math.sqrt((x-lastX)**2 + (y-lastY)**2);
+      speed = Math.round(dist / dt * 1000);
+      speedVal.textContent = speed;
+
+      lastX = x; lastY = y; lastTime = now;
+      moves++;
+      moveCount.textContent = moves;
+    });
+
+    document.addEventListener('click', (e) => {
+      clicks++;
+      clickCount.textContent = clicks;
+
+      // 涟漪效果
+      const ripple = document.createElement('div');
+      ripple.className = 'ripple';
+      ripple.style.left = e.clientX + 'px';
+      ripple.style.top  = e.clientY + 'px';
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+
+      // 光标放大
+      cursorDot.style.width  = '20px';
+      cursorDot.style.height = '20px';
+      cursorRing.style.width  = '60px';
+      cursorRing.style.height = '60px';
+      cursorRing.style.borderColor = 'rgba(255,107,107,0.8)';
+      setTimeout(() => {
+        cursorDot.style.width  = '12px';
+        cursorDot.style.height = '12px';
+        cursorRing.style.width  = '36px';
+        cursorRing.style.height = '36px';
+        cursorRing.style.borderColor = 'rgba(102,126,234,0.6)';
+      }, 150);
+    });
+
+    // 鼠标离开窗口时隐藏光标
+    document.addEventListener('mouseleave', () => {
+      cursorDot.style.opacity = '0';
+      cursorRing.style.opacity = '0';
+    });
+    document.addEventListener('mouseenter', () => {
+      cursorDot.style.opacity = '1';
+      cursorRing.style.opacity = '1';
+    });
+  </script>
 </body>
 </html>
