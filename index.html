@@ -1,315 +1,512 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>鼠标坐标追踪器</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-      background: #0a0a1a;
-      cursor: none;
-    }
-
-    /* 背景网格 */
-    .grid {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-image:
-        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-    }
-
-    /* 顶部信息栏 */
-    .info-bar {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      padding: 20px;
-      z-index: 100;
-      flex-wrap: wrap;
-    }
-
-    .card {
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 14px;
-      padding: 14px 22px;
-      text-align: center;
-      min-width: 120px;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-
-    .card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
-    }
-
-    .card .label {
-      font-size: 12px;
-      color: rgba(255,255,255,0.5);
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 6px;
-    }
-
-    .card .value {
-      font-size: 28px;
-      font-weight: 700;
-      font-family: "Consolas", "Monaco", monospace;
-      color: #fff;
-    }
-
-    .card.x .value { color: #ff6b6b; }
-    .card.y .value { color: #51cf66; }
-    .card.rgb .value { font-size: 18px; }
-
-    /* 十字准星 */
-    .crosshair-h, .crosshair-v {
-      position: fixed;
-      background: rgba(102, 126, 234, 0.4);
-      pointer-events: none;
-      z-index: 50;
-    }
-    .crosshair-h {
-      height: 1px; width: 100%;
-      top: 0; left: 0;
-    }
-    .crosshair-v {
-      width: 1px; height: 100%;
-      top: 0; left: 0;
-    }
-
-    /* 自定义光标 */
-    .cursor-dot {
-      position: fixed;
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: #667eea;
-      pointer-events: none;
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      box-shadow: 0 0 20px #667eea, 0 0 40px #667eea;
-      transition: width 0.1s, height 0.1s;
-    }
-
-    .cursor-ring {
-      position: fixed;
-      width: 36px; height: 36px;
-      border: 2px solid rgba(102, 126, 234, 0.6);
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 9998;
-      transform: translate(-50%, -50%);
-      transition: width 0.15s, height 0.15s, border-color 0.15s;
-    }
-
-    /* 点击波纹 */
-    .ripple {
-      position: fixed;
-      border-radius: 50%;
-      border: 3px solid rgba(255,255,255,0.6);
-      pointer-events: none;
-      animation: ripple-anim 0.6s ease-out forwards;
-      z-index: 9997;
-      transform: translate(-50%, -50%);
-    }
-
-    @keyframes ripple-anim {
-      0%   { width: 0; height: 0; opacity: 1; }
-      100% { width: 120px; height: 120px; opacity: 0; }
-    }
-
-    /* 左下角提示 */
-    .hint {
-      position: fixed;
-      bottom: 20px; left: 50%;
-      transform: translateX(-50%);
-      color: rgba(255,255,255,0.25);
-      font-size: 13px;
-      letter-spacing: 1px;
-      z-index: 100;
-    }
-
-    /* 右下角统计 */
-    .stats {
-      position: fixed;
-      bottom: 20px; right: 20px;
-      display: flex;
-      gap: 14px;
-      z-index: 100;
-    }
-
-    .stat-chip {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 20px;
-      padding: 8px 16px;
-      font-size: 13px;
-      color: rgba(255,255,255,0.6);
-    }
-
-    .stat-chip span {
-      color: #fff;
-      font-weight: 600;
-      font-family: "Consolas", monospace;
-    }
-  </style>
+<meta charset="utf-8">
+<title>设备信息检测</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; background: #0f1220; color: #e0e0e0; padding: 30px; max-width: 800px; margin: 0 auto; }
+  h1 { color: #fff; text-align: center; }
+  .card { background: #1c2030; border-radius: 12px; padding: 20px 25px; margin: 15px 0; }
+  .card h3 { color: #667eea; margin-top: 0; }
+  .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #2a2e40; }
+  .row:last-child { border-bottom: none; }
+  .label { color: #999; }
+  .value { color: #fff; font-weight: bold; text-align: right; max-width: 60%; word-break: break-all; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 8px; }
+  .badge-api { background: #667eea; color: #fff; }
+  .badge-ua { background: #764ba2; color: #fff; }
+  .copy-btn { display: block; margin: 20px auto; padding: 12px 30px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 25px; font-size: 16px; cursor: pointer; }
+  .copy-btn:hover { transform: scale(1.05); }
+  #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #667eea; color: #fff; padding: 10px 25px; border-radius: 20px; display: none; }
+</style>
 </head>
 <body>
 
-  <div class="grid"></div>
+<h1>📱 设备 & 浏览器信息</h1>
 
-  <div class="crosshair-h" id="chH"></div>
-  <div class="crosshair-v" id="chV"></div>
+<div class="card" id="browser-info">
+  <h3>🌐 浏览器</h3>
+  <div class="row"><span class="label">浏览器</span><span class="value" id="browser">检测中...</span></div>
+  <div class="row"><span class="label">版本</span><span class="value" id="version">检测中...</span></div>
+  <div class="row"><span class="label">语言</span><span class="value" id="lang"></span></div>
+  <div class="row"><span class="label">Cookie</span><span class="value" id="cookie"></span></div>
+  <div class="row"><span class="label">User Agent</span><span class="value" id="ua"></span></div>
+</div>
 
-  <div class="cursor-ring" id="cursorRing"></div>
-  <div class="cursor-dot" id="cursorDot"></div>
+<div class="card" id="system-info">
+  <h3>💻 系统与硬件</h3>
+  <div class="row"><span class="label">操作系统</span><span class="value" id="os">检测中...<span class="badge badge-api">API</span></span></div>
+  <div class="row"><span class="label">系统版本</span><span class="value" id="os-version">检测中...</span></div>
+  <div class="row"><span class="label">架构</span><span class="value" id="arch">检测中...</span></div>
+  <div class="row"><span class="label">设备型号</span><span class="value" id="model">检测中...</span></div>
+  <div class="row"><span class="label">屏幕分辨率</span><span class="value" id="screen"></span></div>
+  <div class="row"><span class="label">像素比</span><span class="value" id="pixel-ratio"></span></div>
+  <div class="row"><span class="label">CPU 核心</span><span class="value" id="cores"></span></div>
+  <div class="row"><span class="label">内存</span><span class="value" id="memory"></span></div>
+  <div class="row"><span class="label">时区</span><span class="value" id="timezone"></span></div>
+  <div class="row"><span class="label">当前时间</span><span class="value" id="time"></span></div>
+</div>
 
-  <div class="info-bar">
-    <div class="card x">
-      <div class="label">X 坐标</div>
-      <div class="value" id="valX">0</div>
-    </div>
-    <div class="card y">
-      <div class="label">Y 坐标</div>
-      <div class="value" id="valY">0</div>
-    </div>
-    <div class="card">
-      <div class="label">百分比 X</div>
-      <div class="value" id="valPX">0%</div>
-    </div>
-    <div class="card">
-      <div class="label">百分比 Y</div>
-      <div class="value" id="valPY">0%</div>
-    </div>
-    <div class="card rgb">
-      <div class="label">角度 (°)</div>
-      <div class="value" id="valAngle">0</div>
-    </div>
-    <div class="card rgb">
-      <div class="label">距离 (px)</div>
-      <div class="value" id="valDist">0</div>
-    </div>
+<div class="card" id="network-info">
+  <h3>📡 网络</h3>
+  <div class="row"><span class="label">连接类型</span><span class="value" id="conn-type"></span></div>
+  <div class="row"><span class="label">下行速度</span><span class="value" id="downlink"></span></div>
+  <div class="row"><span class="label">RTT</span><span class="value" id="rtt"></span></div>
+  <div class="row"><span class="label">IP 地址</span><span class="value" id="ip">点击按钮获取</span></div>
+</div>
+
+<div class="card" id="gpu-info">
+  <h3>🎮 GPU</h3>
+  <div class="row"><span class="label">显卡型号</span><span class="value" id="gpu">检测中...</span></div>
+</div>
+
+<button class="copy-btn" onclick="copyAll()">📋 复制全部信息</button>
+<button class="copy-btn" onclick="getIP()">🌍 获取 IP</button>
+
+<div id="toast">已复制！</div>
+
+<script>
+// ========== userAgentData 优先 + UA 兜底 ==========
+async function detectAll() {
+  let osName = '未知', osVer = '未知', arch = '未知', model = '未知';
+  let browserName = '未知', browserVer = '未知';
+  let source = 'ua'; // 标记数据来源
+
+  // --- 1. 优先用 userAgentData ---
+  if (navigator.userAgentData) {
+    source = 'api';
+    const d = await navigator.userAgentData.getHighEntropyValues([
+      'platform', 'platformVersion', 'architecture', 'bitness', 'model', 'fullVersionList'
+    ]);
+
+    osName = d.platform || '未知';
+    osVer = d.platformVersion || '未知';
+    arch = d.architecture + (d.bitness ? ('-' + d.bitness) : '');
+    model = d.model || '未知';
+
+    // 浏览器信息
+    if (d.fullVersionList && d.fullVersionList.length > 0) {
+      // 取第一个非 Chromium 的条目作为浏览器
+      const brands = d.fullVersionList;
+      const main = brands.find(b => b.brand !== 'Chromium' && b.brand !== 'Not A(Brand') || brands[0];
+      browserName = main.brand;
+      browserVer = main.version;
+    }
+
+    // 更新 badge 标记
+    document.querySelectorAll('.badge-api').forEach(b => { b.textContent = 'API'; b.style.background = '#22c55e'; });
+  }
+
+  // --- 2. UA 兜底（Firefox/Safari/老浏览器） ---
+  if (source === 'ua') {
+    const ua = navigator.userAgent;
+
+    // 操作系统
+    if (ua.includes('Windows NT 10.0')) osName = 'Windows'; osVer = '10/11';
+    else if (ua.includes('Windows NT 6.3')) { osName = 'Windows'; osVer = '8.1'; }
+    else if (ua.includes('Windows NT 6.2')) { osName = 'Windows'; osVer = '8'; }
+    else if (ua.includes('Windows NT 6.1')) { osName = 'Windows'; osVer = '7'; }
+    else if (ua.includes('Windows NT 6.0')) { osName = 'Windows'; osVer = 'Vista'; }
+    else if (ua.includes('Windows NT 5.1')) { osName = 'Windows'; osVer = 'XP'; }
+    else if (ua.includes('Windows NT 5.0')) { osName = 'Windows'; osVer = '2000'; }
+    else if (ua.includes('Mac OS X')) { osName = 'macOS'; osVer = ua.match(/Mac OS X ([0-9_]+)/)?.[1]?.replace(/_/g, '.') || '未知'; }
+    else if (ua.includes('Android')) { osName = 'Android'; osVer = ua.match(/Android\s([0-9.]+)/)?.[1] || '未知'; }
+    else if (ua.includes('iPhone')) { osName = 'iOS'; osVer = ua.match(/OS\s([0-9_]+)/)?.[1]?.replace(/_/g, '.') || '未知'; }
+    else if (ua.includes('iPad')) { osName = 'iPadOS'; osVer = ua.match(/OS\s([0-9_]+)/)?.[1]?.replace(/_/g, '.') || '未知'; }
+    else if (ua.includes('Linux')) { osName = 'Linux'; osVer = '未知'; }
+    else if (ua.includes('CrOS')) { osName = 'ChromeOS'; osVer = '未知'; }
+
+    // 架构
+    if (ua.includes('x86_64') || ua.includes('Win64') || ua.includes('x64')) arch = 'x86-64';
+    else if (ua.includes('ARM')) arch = 'ARM';
+    else if (ua.includes('aarch64')) arch = 'ARM64';
+    else if (ua.includes('WOW64')) arch = 'x86-64 (WOW64)';
+    else arch = 'x86 (32-bit)';
+
+    // 浏览器
+    if (ua.includes('Edg/')) { browserName = 'Edge'; browserVer = ua.match(/Edg\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('Chrome/')) { browserName = 'Chrome'; browserVer = ua.match(/Chrome\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('Firefox/')) { browserName = 'Firefox'; browserVer = ua.match(/Firefox\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) { browserName = 'Safari'; browserVer = ua.match(/Version\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('OPR/') || ua.includes('Opera/')) { browserName = 'Opera'; browserVer = ua.match(/(?:OPR|Opera)\/([0-9.]+)/)?.[1] || ''; }
+
+    // 标记兜底
+    document.querySelectorAll('.badge-api').forEach(b => { b.textContent = 'UA兜底'; b.style.background = '#f59e0b'; });
+  }
+
+  // --- 3. 填充页面 ---
+  document.getElementById('os').innerHTML = osName + (source === 'api' ? ' <span class="badge badge-api">API</span>' : ' <span class="badge" style="background:#f59e0b">UA</span>');
+  document.getElementById('os-version').textContent = osVer;
+  document.getElementById('arch').textContent = arch;
+  document.getElementById('model').textContent = model !== '未知' ? model : '（未提供）';
+  document.getElementById('browser').textContent = browserName;
+  document.getElementById('version').textContent = browserVer;
+  document.getElementById('ua').textContent = navigator.userAgent;
+}
+
+// ========== 直接获取的 API（不用条件判断） ==========
+function directAPIs() {
+  document.getElementById('lang').textContent = navigator.language;
+  document.getElementById('cookie').textContent = navigator.cookieEnabled ? '✅ 启用' : '❌ 禁用';
+  document.getElementById('screen').textContent = screen.width + ' × ' + screen.height;
+  document.getElementById('pixel-ratio').textContent = window.devicePixelRatio || 1;
+  document.getElementById('cores').textContent = navigator.hardwareConcurrency || '未知';
+  document.getElementById('memory').textContent = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '未知';
+  document.getElementById('timezone').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
+
+  // 网络
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    document.getElementById('conn-type').textContent = conn.effectiveType || conn.type || '未知';
+    document.getElementById('downlink').textContent = conn.downlink ? conn.downlink + ' Mbps' : '未知';
+    document.getElementById('rtt').textContent = conn.rtt ? conn.rtt + ' ms' : '未知';
+  } else {
+    document.getElementById('conn-type').textContent = '不支持';
+    document.getElementById('downlink').textContent = '不支持';
+    document.getElementById('rtt').textContent = '不支持';
+  }
+
+  // GPU
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        document.getElementById('gpu').textContent = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+      } else {
+        document.getElementById('gpu').textContent = 'WebGL 可用，但无法读取 GPU 型号';
+      }
+    } else {
+      document.getElementById('gpu').textContent = 'WebGL 不可用';
+    }
+  } catch(e) {
+    document.getElementById('gpu').textContent = '检测失败';
+  }
+}
+
+// ========== IP ==========
+function getIP() {
+  document.getElementById('ip').textContent = '获取中...';
+  fetch('https://api.ipify.org?format=json')
+    .then(r => r.json())
+    .then(d => { document.getElementById('ip').textContent = d.ip; })
+    .catch(() => { document.getElementById('ip').textContent = '获取失败'; });
+}
+
+// ========== 复制 ==========
+function copyAll() {
+  const text = `OS: ${document.getElementById('os').textContent}
+版本: ${document.getElementById('os-version').textContent}
+架构: ${document.getElementById('arch').textContent}
+浏览器: ${document.getElementById('browser').textContent} ${document.getElementById('version').textContent}
+CPU: ${document.getElementById('cores').textContent} 核
+内存: ${document.getElementById('memory').textContent}
+屏幕: ${document.getElementById('screen').textContent}
+GPU: ${document.getElementById('gpu').textContent}
+IP: ${document.getElementById('ip').textContent}
+UA: ${navigator.userAgent}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const t = document.getElementById('toast');
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2000);
+  });
+}
+
+// ==========
+把样式改为简约风
+好，给你换成简约干净风，去掉所有花哨渐变和暗色背景，走极简路线：
+
+html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>设备信息</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #fafafa;
+    color: #333;
+    padding: 40px 20px;
+    line-height: 1.6;
+  }
+  .container { max-width: 680px; margin: 0 auto; }
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #111;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #999;
+    margin-bottom: 36px;
+  }
+  .section {
+    margin-bottom: 28px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eaeaea;
+  }
+  .item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .item:last-child { border-bottom: none; }
+  .item-label {
+    font-size: 14px;
+    color: #666;
+  }
+  .item-value {
+    font-size: 14px;
+    color: #111;
+    font-weight: 500;
+    text-align: right;
+    max-width: 55%;
+    word-break: break-all;
+  }
+  .source-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+    font-weight: 400;
+  }
+  .source-api { background: #e8f5e9; color: #2e7d32; }
+  .source-ua { background: #fff3e0; color: #e65100; }
+  .actions {
+    margin-top: 40px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .btn:hover { border-color: #999; }
+  .btn-primary {
+    background: #111;
+    color: #fff;
+    border-color: #111;
+  }
+  .btn-primary:hover { background: #333; border-color: #333; }
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #111;
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    display: none;
+  }
+  @media (max-width: 600px) {
+    body { padding: 24px 16px; }
+    .item { flex-direction: column; gap: 4px; }
+    .item-value { text-align: left; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>设备信息</h1>
+  <p class="subtitle">以下信息来自你的浏览器，不会发送到任何服务器</p>
+
+  <div class="section">
+    <div class="section-title">浏览器</div>
+    <div class="item"><span class="item-label">浏览器</span><span class="item-value" id="browser">检测中…</span></div>
+    <div class="item"><span class="item-label">版本</span><span class="item-value" id="version">检测中…</span></div>
+    <div class="item"><span class="item-label">语言</span><span class="item-value" id="lang"></span></div>
+    <div class="item"><span class="item-label">Cookie</span><span class="item-value" id="cookie"></span></div>
+    <div class="item"><span class="item-label">User Agent</span><span class="item-value" id="ua" style="font-size:12px;color:#888;"></span></div>
   </div>
 
-  <div class="stats">
-    <div class="stat-chip">移动次数：<span id="moveCount">0</span></div>
-    <div class="stat-chip">点击次数：<span id="clickCount">0</span></div>
-    <div class="stat-chip">速度：<span id="speedVal">0</span> px/s</div>
+  <div class="section">
+    <div class="section-title">系统与硬件</div>
+    <div class="item"><span class="item-label">操作系统</span><span class="item-value" id="os">检测中…</span></div>
+    <div class="item"><span class="item-label">系统版本</span><span class="item-value" id="os-version">检测中…</span></div>
+    <div class="item"><span class="item-label">架构</span><span class="item-value" id="arch">检测中…</span></div>
+    <div class="item"><span class="item-label">设备型号</span><span class="item-value" id="model">检测中…</span></div>
+    <div class="item"><span class="item-label">屏幕分辨率</span><span class="item-value" id="screen"></span></div>
+    <div class="item"><span class="item-label">像素比</span><span class="item-value" id="pixel-ratio"></span></div>
+    <div class="item"><span class="item-label">CPU 核心</span><span class="item-value" id="cores"></span></div>
+    <div class="item"><span class="item-label">内存</span><span class="item-value" id="memory"></span></div>
+    <div class="item"><span class="item-label">时区</span><span class="item-value" id="timezone"></span></div>
+    <div class="item"><span class="item-label">当前时间</span><span class="item-value" id="time"></span></div>
   </div>
 
-  <div class="hint">移动鼠标查看坐标 · 点击产生涟漪效果</div>
+  <div class="section">
+    <div class="section-title">网络</div>
+    <div class="item"><span class="item-label">连接类型</span><span class="item-value" id="conn-type"></span></div>
+    <div class="item"><span class="item-label">下行速度</span><span class="item-value" id="downlink"></span></div>
+    <div class="item"><span class="item-label">RTT</span><span class="item-value" id="rtt"></span></div>
+    <div class="item"><span class="item-label">IP 地址</span><span class="item-value" id="ip">点击按钮获取</span></div>
+  </div>
 
-  <script>
-    const cursorDot   = document.getElementById('cursorDot');
-    const cursorRing  = document.getElementById('cursorRing');
-    const chH         = document.getElementById('chH');
-    const chV         = document.getElementById('chV');
-    const valX        = document.getElementById('valX');
-    const valY        = document.getElementById('valY');
-    const valPX       = document.getElementById('valPX');
-    const valPY       = document.getElementById('valPY');
-    const valAngle    = document.getElementById('valAngle');
-    const valDist     = document.getElementById('valDist');
-    const moveCount   = document.getElementById('moveCount');
-    const clickCount  = document.getElementById('clickCount');
-    const speedVal    = document.getElementById('speedVal');
+  <div class="section">
+    <div class="section-title">GPU</div>
+    <div class="item"><span class="item-label">显卡型号</span><span class="item-value" id="gpu">检测中…</span></div>
+  </div>
 
-    let moves = 0, clicks = 0;
-    let lastX = 0, lastY = 0, lastTime = Date.now();
-    let speed = 0;
+  <div class="actions">
+    <button class="btn btn-primary" onclick="copyAll()">复制全部</button>
+    <button class="btn" onclick="getIP()">获取 IP</button>
+  </div>
+</div>
 
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
+<div id="toast">已复制到剪贴板</div>
 
-    document.addEventListener('mousemove', (e) => {
-      const x = e.clientX;
-      const y = e.clientY;
-      const now = Date.now();
-      const dt = now - lastTime || 1;
+<script>
+async function detectAll() {
+  let osName = '未知', osVer = '未知', arch = '未知', model = '未知';
+  let browserName = '未知', browserVer = '未知';
 
-      // 光标跟随
-      cursorDot.style.left  = x + 'px';
-      cursorDot.style.top   = y + 'px';
-      cursorRing.style.left = x + 'px';
-      cursorRing.style.top  = y + 'px';
+  if (navigator.userAgentData) {
+    const d = await navigator.userAgentData.getHighEntropyValues([
+      'platform', 'platformVersion', 'architecture', 'bitness', 'model', 'fullVersionList'
+    ]);
+    osName = d.platform || '未知';
+    osVer = d.platformVersion || '未知';
+    arch = d.architecture + (d.bitness ? ('-' + d.bitness) : '');
+    model = d.model || '未知';
+    if (d.fullVersionList && d.fullVersionList.length > 0) {
+      const main = d.fullVersionList.find(b => b.brand !== 'Chromium' && b.brand !== 'Not A(Brand') || d.fullVersionList[0];
+      browserName = main.brand;
+      browserVer = main.version;
+    }
+    document.getElementById('os').innerHTML = osName + '<span class="source-tag source-api">API</span>';
+  } else {
+    const ua = navigator.userAgent;
+    if (ua.includes('Windows NT 10.0')) { osName = 'Windows'; osVer = '10/11'; }
+    else if (ua.includes('Windows NT 6.3')) { osName = 'Windows'; osVer = '8.1'; }
+    else if (ua.includes('Windows NT 6.2')) { osName = 'Windows'; osVer = '8'; }
+    else if (ua.includes('Windows NT 6.1')) { osName = 'Windows'; osVer = '7'; }
+    else if (ua.includes('Windows NT 6.0')) { osName = 'Windows'; osVer = 'Vista'; }
+    else if (ua.includes('Windows NT 5.1')) { osName = 'Windows'; osVer = 'XP'; }
+    else if (ua.includes('Windows NT 5.0')) { osName = 'Windows'; osVer = '2000'; }
+    else if (ua.includes('Mac OS X')) { osName = 'macOS'; osVer = ua.match(/Mac OS X ([0-9_]+)/)?.[1]?.replace(/_/g, '.') || '未知'; }
+    else if (ua.includes('Android')) { osName = 'Android'; osVer = ua.match(/Android\s([0-9.]+)/)?.[1] || '未知'; }
+    else if (ua.includes('iPhone')) { osName = 'iOS'; osVer = ua.match(/OS\s([0-9_]+)/)?.[1]?.replace(/_/g, '.') || '未知'; }
+    else if (ua.includes('iPad')) { osName = 'iPadOS'; osVer = ua.match(/OS\s([0-9_]+)/)?.[1]?.replace(/_/g, '.') || '未知'; }
+    else if (ua.includes('Linux')) { osName = 'Linux'; osVer = '未知'; }
+    else if (ua.includes('CrOS')) { osName = 'ChromeOS'; osVer = '未知'; }
 
-      // 十字线
-      chH.style.top = y + 'px';
-      chV.style.left = x + 'px';
+    if (ua.includes('x86_64') || ua.includes('Win64') || ua.includes('x64')) arch = 'x86-64';
+    else if (ua.includes('ARM') || ua.includes('aarch64')) arch = 'ARM';
+    else arch = 'x86 (32-bit)';
 
-      // 数值更新
-      valX.textContent  = x;
-      valY.textContent  = y;
-      valPX.textContent = Math.round(x / window.innerWidth  * 100) + '%';
-      valPY.textContent = Math.round(y / window.innerHeight * 100) + '%';
+    if (ua.includes('Edg/')) { browserName = 'Edge'; browserVer = ua.match(/Edg\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('Chrome/')) { browserName = 'Chrome'; browserVer = ua.match(/Chrome\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('Firefox/')) { browserName = 'Firefox'; browserVer = ua.match(/Firefox\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('Safari/') && !ua.includes('Chrome')) { browserName = 'Safari'; browserVer = ua.match(/Version\/([0-9.]+)/)?.[1] || ''; }
+    else if (ua.includes('OPR/') || ua.includes('Opera/')) { browserName = 'Opera'; browserVer = ua.match(/(?:OPR|Opera)\/([0-9.]+)/)?.[1] || ''; }
 
-      // 角度 & 距离（以屏幕中心为原点）
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const angle = Math.round(Math.atan2(dy, dx) * 180 / Math.PI);
-      valAngle.textContent = angle + '°';
-      valDist.textContent  = Math.round(Math.sqrt(dx*dx + dy*dy));
+    document.getElementById('os').innerHTML = osName + '<span class="source-tag source-ua">UA</span>';
+  }
 
-      // 速度
-      const dist = Math.sqrt((x-lastX)**2 + (y-lastY)**2);
-      speed = Math.round(dist / dt * 1000);
-      speedVal.textContent = speed;
+  document.getElementById('os-version').textContent = osVer;
+  document.getElementById('arch').textContent = arch;
+  document.getElementById('model').textContent = model !== '未知' ? model : '—';
+  document.getElementById('browser').textContent = browserName;
+  document.getElementById('version').textContent = browserVer;
+  document.getElementById('ua').textContent = navigator.userAgent;
+}
 
-      lastX = x; lastY = y; lastTime = now;
-      moves++;
-      moveCount.textContent = moves;
-    });
+function directAPIs() {
+  document.getElementById('lang').textContent = navigator.language;
+  document.getElementById('cookie').textContent = navigator.cookieEnabled ? '启用' : '禁用';
+  document.getElementById('screen').textContent = screen.width + ' × ' + screen.height;
+  document.getElementById('pixel-ratio').textContent = window.devicePixelRatio || 1;
+  document.getElementById('cores').textContent = navigator.hardwareConcurrency || '未知';
+  document.getElementById('memory').textContent = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : '未知';
+  document.getElementById('timezone').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
 
-    document.addEventListener('click', (e) => {
-      clicks++;
-      clickCount.textContent = clicks;
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (conn) {
+    document.getElementById('conn-type').textContent = conn.effectiveType || conn.type || '未知';
+    document.getElementById('downlink').textContent = conn.downlink ? conn.downlink + ' Mbps' : '未知';
+    document.getElementById('rtt').textContent = conn.rtt ? conn.rtt + ' ms' : '未知';
+  } else {
+    document.getElementById('conn-type').textContent = '不支持';
+    document.getElementById('downlink').textContent = '不支持';
+    document.getElementById('rtt').textContent = '不支持';
+  }
 
-      // 涟漪效果
-      const ripple = document.createElement('div');
-      ripple.className = 'ripple';
-      ripple.style.left = e.clientX + 'px';
-      ripple.style.top  = e.clientY + 'px';
-      document.body.appendChild(ripple);
-      setTimeout(() => ripple.remove(), 600);
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (debugInfo) {
+        document.getElementById('gpu').textContent = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+      } else {
+        document.getElementById('gpu').textContent = 'WebGL 可用，无法读取型号';
+      }
+    } else {
+      document.getElementById('gpu').textContent = 'WebGL 不可用';
+    }
+  } catch(e) {
+    document.getElementById('gpu').textContent = '检测失败';
+  }
+}
 
-      // 光标放大
-      cursorDot.style.width  = '20px';
-      cursorDot.style.height = '20px';
-      cursorRing.style.width  = '60px';
-      cursorRing.style.height = '60px';
-      cursorRing.style.borderColor = 'rgba(255,107,107,0.8)';
-      setTimeout(() => {
-        cursorDot.style.width  = '12px';
-        cursorDot.style.height = '12px';
-        cursorRing.style.width  = '36px';
-        cursorRing.style.height = '36px';
-        cursorRing.style.borderColor = 'rgba(102,126,234,0.6)';
-      }, 150);
-    });
+function getIP() {
+  document.getElementById('ip').textContent = '获取中…';
+  fetch('https://api.ipify.org?format=json')
+    .then(r => r.json())
+    .then(d => { document.getElementById('ip').textContent = d.ip; })
+    .catch(() => { document.getElementById('ip').textContent = '获取失败'; });
+}
 
-    // 鼠标离开窗口时隐藏光标
-    document.addEventListener('mouseleave', () => {
-      cursorDot.style.opacity = '0';
-      cursorRing.style.opacity = '0';
-    });
-    document.addEventListener('mouseenter', () => {
-      cursorDot.style.opacity = '1';
-      cursorRing.style.opacity = '1';
-    });
-  </script>
+function copyAll() {
+  const text = `OS: ${document.getElementById('os').textContent}
+版本: ${document.getElementById('os-version').textContent}
+架构: ${document.getElementById('arch').textContent}
+浏览器: ${document.getElementById('browser').textContent} ${document.getElementById('version').textContent}
+CPU: ${document.getElementById('cores').textContent} 核
+内存: ${document.getElementById('memory').textContent}
+屏幕: ${document.getElementById('screen').textContent}
+GPU: ${document.getElementById('gpu').textContent}
+IP: ${document.getElementById('ip').textContent}`;
+  navigator.clipboard.writeText(text).then(() => {
+    const t = document.getElementById('toast');
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 2000);
+  });
+}
+
+setInterval(() => {
+  document.getElementById('time').textContent = new Date().toLocaleString('zh-CN');
+}, 1000);
+
+detectAll();
+directAPIs();
+</script>
+
 </body>
 </html>
